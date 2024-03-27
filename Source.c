@@ -5,30 +5,29 @@
 //По запросу покупателя выдавать сведения о наличии лекарства, при его отсутствии - список заменителей, имеющихся в наличии.
 //Использовать структурные переменные.
 
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <locale.h>
+#include <string.h>
 
 typedef struct {
     int id;
     char name[50];
     float cost;
-    int is_exists;
+    int isInStock;
     char generics[100];
 } Drug;
 
-void read_drugs_from_file(const char* filename, Drug** drugs, int* count) {
+static void read_drugs_from_file(const char* filename, Drug** drugs, int* count) {
     FILE* fp = fopen(filename, "r");
-    if (fp == NULL) {
-        perror("Error opening file");
-        return;
-    }
+    if (fp == NULL)
+        error();
 
     *drugs = NULL;
     *count = 0;
 
     Drug drg;
-    while (fscanf(fp, "%d %s %f %d %s", &drg.id, drg.name, &drg.cost, &drg.is_exists, drg.generics) != EOF) {
+    while (fscanf(fp, "%d,%[^,],%f,%d,%[^\n]\n", &drg.id, drg.name, &drg.cost, &drg.isInStock, drg.generics) != EOF) {
         *count = *count + 1;
         *drugs = realloc(*drugs, *count * sizeof(Drug));
         if (*drugs == NULL) {
@@ -40,31 +39,63 @@ void read_drugs_from_file(const char* filename, Drug** drugs, int* count) {
     fclose(fp);
 }
 
-void print_drugs(Drug* drugs, int count) {
-    for (int i = 0; i < count; i++) {
-        printf("ID:\t%d\n", drugs[i].id);
-        printf("Название:\t%s\n", drugs[i].name);
-        printf("Стоимость:\t%.2f\n", drugs[i].cost);
-        if(drugs[i].is_exists == 1)
-            printf("Наличие:\tДа.\n");
-        else
-        {
-            printf("Наличие:\tНет.\n");
-        }
+static void print_drugs(Drug* drugs, int count, int isSortInStock) {
+    switch (isSortInStock) {
+    case 0://not sorted output
+        printf("Полный перечень препаратов:\n");
+        for (int i = 0; i < count; i++) {
+            printf("ID:\t%d\n", drugs[i].id);
+            printf("Название:\t%s\n", drugs[i].name);
+            printf("Стоимость:\t%.2f\n", drugs[i].cost);
 
-        printf("Аналоги:\t%s\n", drugs[i].generics);
-        printf("--------------------------------------------------\n");
+            if (drugs[i].isInStock == 1)
+                printf("Наличие:\tДа.\n");
+            else
+            {
+                printf("Наличие:\tНет.\n");
+            }
+
+            printf("Аналоги:\t%s\n", drugs[i].generics);
+            printf("--------------------------------------------------\n");
+        }
+        break;
+
+    case 1://only in stock output
+        printf("Препараты в наличии:\n");
+        for (int i = 0; i < count; i++) {
+            if (drugs[i].isInStock == 1) {
+                printf("ID:\t%d\n", drugs[i].id);
+                printf("Название:\t%s\n", drugs[i].name);
+                printf("Стоимость:\t%.2f\n", drugs[i].cost);
+                printf("Аналоги:\t%s\n", drugs[i].generics);
+                printf("--------------------------------------------------\n");
+            }
+        }
+        break;
+
+    default:
+        printf("Недопустимый выбор.\n");
     }
 }
 
-int main() {
+int error() {
+    printf("error");
+    exit;
+}
+
+void main() {
     SetConsoleOutputCP(1251);
     Drug* drugs = NULL;
     int count = NULL;
-
-    read_drugs_from_file("drugs.txt", &drugs, &count);
-    print_drugs(drugs, count);
+    int choice = NULL;
+    int isDigit = 0;
+    read_drugs_from_file("drugs.csv", &drugs, &count);
+    printf("Отобразить полный перечень препаратов или только препараты в наличии?\n0 - полный перечень препаратов, 1 - только в наличии\n");
+    isDigit = scanf("%d", &choice);
+    if (isDigit != 1)
+        error();
+    print_drugs(drugs, count, choice);
 
     free(drugs);
-    return EXIT_SUCCESS;
+    return 0;
 }
